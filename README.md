@@ -32,49 +32,32 @@ Họ tên và mã sinh viên được cấu hình ở `STUDENT_NAME`, `STUDENT_I
 
 ## 3. Broker sử dụng
 
-**Broker sử dụng khi làm bài:** RabbitMQ chạy trên máy cá nhân (`localhost`), cổng AMQP `5672`, tài khoản mặc định `guest / guest`, virtual host `/`. Giao diện quản lý: http://localhost:15672.
+**Broker sử dụng khi làm bài:** RabbitMQ trên dịch vụ **CloudAMQP** (gói *Little Lemur* miễn phí), host `armadillo.rmq.cloudamqp.com`, cổng `5671` (AMQPS – AMQP có mã hoá TLS). Không cần cài RabbitMQ trên máy.
 
-Code đọc địa chỉ broker từ biến `AMQP_URL` trong `config.py`, mặc định:
+### Cấu hình
 
-```
-amqp://guest:guest@localhost:5672/%2F
-```
+Địa chỉ broker được đọc theo thứ tự:
 
-(`%2F` là virtual host `/` đã mã hoá.)
+1. Biến môi trường `AMQP_URL` (nếu có).
+2. File `amqp_url.txt` đặt cạnh `config.py`, chứa đúng 1 dòng AMQP URL.
+3. Mặc định `amqp://guest:guest@localhost:5672/%2F` (RabbitMQ cài trên máy).
 
-### Cách 1 – Cài RabbitMQ trên Windows
+Cách làm với CloudAMQP:
 
-1. Cài **Erlang/OTP** (bản Windows 64-bit) tại https://www.erlang.org/downloads.
-2. Cài **RabbitMQ** tại https://www.rabbitmq.com/docs/install-windows. Cài xong RabbitMQ tự chạy như một Windows service ở cổng 5672.
-3. Bật giao diện quản lý web: mở **RabbitMQ Command Prompt (sbin dir)** trong Start menu và chạy
+1. Đăng ký tại https://www.cloudamqp.com, tạo instance gói **Little Lemur (Free)**.
+2. Mở instance, copy **AMQP URL** (dạng `amqps://user:password@host/vhost`).
+3. Tạo file `amqp_url.txt` trong thư mục project, dán URL vào và lưu lại.
 
-   ```bat
-   rabbitmq-plugins enable rabbitmq_management
-   ```
+File `amqp_url.txt` chứa mật khẩu broker nên **không được đưa lên GitHub** (đã có trong `.gitignore`).
 
-4. Mở http://localhost:15672, đăng nhập `guest` / `guest` để kiểm tra.
+Xem queue, exchange, binding trực tiếp trên web: trong trang CloudAMQP, bấm **RabbitMQ Manager**.
 
-### Cách 2 – Docker
+### Cách khác – RabbitMQ chạy trên máy
 
-```bash
-docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
-```
+- **Windows:** cài Erlang/OTP (https://www.erlang.org/downloads) rồi RabbitMQ (https://www.rabbitmq.com/docs/install-windows). Bật giao diện web bằng `rabbitmq-plugins enable rabbitmq_management`, mở http://localhost:15672 (guest/guest).
+- **Docker:** `docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management`
 
-### Cách 3 – Broker trên Internet (CloudAMQP) hoặc broker của lớp
-
-Tạo instance miễn phí tại https://www.cloudamqp.com, copy **AMQP URL** rồi đặt biến môi trường trước khi chạy:
-
-```powershell
-# Windows PowerShell
-$env:AMQP_URL="amqps://user:password@host/vhost"
-```
-
-```bash
-# Linux / macOS
-export AMQP_URL="amqps://user:password@host/vhost"
-```
-
-Tài khoản `guest` của RabbitMQ chỉ đăng nhập được từ chính máy chạy broker. Nếu dùng broker trên máy khác, cần tạo user riêng.
+Khi đó không cần file `amqp_url.txt`, code tự dùng `localhost`.
 
 ## 4. Cách chạy từng chương trình
 
@@ -105,7 +88,7 @@ python sensor_producer_bai2.py --devices sensor01 sensor02 sensor03  # (mở r�
 Payload JSON (có thêm trường thời gian gửi – mở rộng):
 
 ```json
-{"device_id": "sensor01", "temperature": 29.5, "humidity": 62.1, "timestamp": "2026-10-17T21:27:46"}
+{"device_id": "sensor01", "temperature": 29.5, "humidity": 62.1, "timestamp": "2026-10-18T01:13:30"}
 ```
 
 Nhiệt độ ngẫu nhiên 24–38, độ ẩm 35–85 để thỉnh thoảng có cảnh báo.
@@ -156,27 +139,35 @@ alert_producer ──► iot_alert_topic (topic) ── "alert.#" ──► all_
 
 ### Output dạng văn bản
 
-**Bài 1**
+Chạy trên Windows, broker CloudAMQP `armadillo.rmq.cloudamqp.com:5671`.
+
+**Bài 1** – producer gửi 3 message (`python producer_bai1.py -n 3`):
 
 ```
-Da nhan message: Xin chao tu ung dung Python AMQP - B23DCCN040 - Nguyen Van Duc Anh
-Thoi gian nhan: 21:27:43
+Da nhan message: Xin chao tu ung dung Python AMQP - B23DCCN040 - Nguyen Van Duc Anh (#1)
+Thoi gian nhan: 01:11:50
+--------------------------------------------------
+Da nhan message: Xin chao tu ung dung Python AMQP - B23DCCN040 - Nguyen Van Duc Anh (#2)
+Thoi gian nhan: 01:11:51
+--------------------------------------------------
+Da nhan message: Xin chao tu ung dung Python AMQP - B23DCCN040 - Nguyen Van Duc Anh (#3)
+Thoi gian nhan: 01:11:52
 ```
 
-**Bài 2**
+**Bài 2** – 3 cảm biến sensor01, sensor02, sensor03:
 
 ```
-Device: sensor02
-Temperature: 37.2
-Humidity: 39.7
-Gui luc: 2026-10-17T21:27:46  |  Nhan luc: 21:27:46
-CANH BAO: Nhiet do cao
+Device: sensor03
+Temperature: 30.6
+Humidity: 37.8
+Gui luc: 2026-10-18T01:13:30  |  Nhan luc: 01:13:30
 CANH BAO: Do am thap
 ----------------------------------------
-Device: sensor01
-Temperature: 30.2
-Humidity: 45.0
-Gui luc: 2026-10-17T21:27:46  |  Nhan luc: 21:27:46
+Device: sensor03
+Temperature: 37.8
+Humidity: 67.0
+Gui luc: 2026-10-18T01:13:33  |  Nhan luc: 01:13:33
+CANH BAO: Nhiet do cao
 ```
 
 **Bài 3** – producer gửi 3 cảnh báo info, warning, critical:
@@ -188,24 +179,18 @@ Da gui [critical] -> iot_alert_exchange: Cam bien kho lanh mat ket noi critical
 ```
 
 ```
-[warning_queue] Da nhan: Nhiet do phong may vuot nguong warning   (21:27:52, routing key = warning)
+[warning_queue] Da nhan: Nhiet do phong may vuot nguong warning   (01:14:54, routing key = warning)
 ```
 
 ```
-[critical_queue] Da nhan: Cam bien kho lanh mat ket noi critical   (21:27:53, routing key = critical)
+[critical_queue] Da nhan: Cam bien kho lanh mat ket noi critical   (01:14:54, routing key = critical)
 ```
 
 - `info`: không consumer nào trong hai consumer trên nhận được.
 - `warning`: chỉ `warning_queue` nhận.
 - `critical`: chỉ `critical_queue` nhận.
 
-Mở rộng – `all_alerts_queue` nhận cả 3 mức và ghi vào `alerts_log.txt`:
-
-```
-2026-10-17 21:27:52 [INFO] Cam bien phong hoc A2 hoat dong binh thuong info
-2026-10-17 21:27:52 [WARNING] Nhiet do phong may vuot nguong warning
-2026-10-17 21:27:53 [CRITICAL] Cam bien kho lanh mat ket noi critical
-```
+Mở rộng: chạy thêm `all_alerts_consumer_bai3.py` trước khi chạy producer thì queue `all_alerts_queue` (bind `alert.#` trên topic exchange `iot_alert_topic`) nhận cả 3 mức và ghi từng dòng vào `alerts_log.txt` theo dạng `thời gian [MỨC] nội dung`.
 
 Tóm tắt:
 
@@ -218,7 +203,7 @@ Tóm tắt:
 
 ## 6. Lưu ý / xử lý lỗi
 
-- `Khong ket noi duoc RabbitMQ`: kiểm tra service RabbitMQ đã chạy chưa (Windows: mở **Services**, tìm *RabbitMQ*), hoặc `AMQP_URL` có đúng không.
+- `Khong ket noi duoc RabbitMQ`: kiểm tra file `amqp_url.txt` có đúng URL không, máy có Internet không. Một số mạng (wifi trường, công ty) chặn cổng 5671; khi đó đổi `amqps://` thành `amqp://` trong URL để dùng cổng 5672.
 - `ModuleNotFoundError: No module named 'pika'`: chạy lại `pip install -r requirements.txt`.
-- Xem queue, exchange, binding và số message đang chờ trong giao diện http://localhost:15672 (tab **Queues and Streams** và **Exchanges**).
+- Xem queue, exchange, binding và số message đang chờ trong **RabbitMQ Manager** của CloudAMQP (tab **Queues and Streams** và **Exchanges**).
 - Nếu chạy `alert_producer_bai3.py` khi chưa từng chạy consumer, các queue chưa được tạo nên cảnh báo bị bỏ. Hãy chạy consumer ít nhất một lần trước.
